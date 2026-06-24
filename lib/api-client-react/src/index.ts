@@ -1,5 +1,4 @@
 import { useQuery, useMutation, type UseQueryOptions, type UseMutationOptions } from "@tanstack/react-query";
-import type { z } from "zod";
 import type { JiraStory, TestCase, TraceabilityResponse, ConfigStatus } from "@workspace/api-zod";
 
 type QueryKey = readonly [string, ...unknown[]];
@@ -8,7 +7,7 @@ function jsonFetch<T>(url: string, init?: RequestInit): Promise<T> {
   return fetch(url, {
     ...init,
     headers: { ...init?.headers, "Content-Type": "application/json" },
-  }).then(async (res) => {
+  }).then(async (res: Response) => {
     const data = await res.json();
     if (!res.ok) throw data;
     return data as T;
