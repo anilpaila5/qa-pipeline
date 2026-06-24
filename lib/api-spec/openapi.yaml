@@ -1,0 +1,366 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: QA Pipeline API — Jira → AI → Review → BrowserStack
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: pipeline
+    description: QA pipeline operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /pipeline/config:
+    get:
+      operationId: getPipelineConfig
+      tags: [pipeline]
+      summary: Check which external services are configured
+      responses:
+        "200":
+          description: Config status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConfigStatus"
+
+  /pipeline/fetch-story:
+    post:
+      operationId: fetchStory
+      tags: [pipeline]
+      summary: Fetch a Jira story by key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JiraFetchInput"
+      responses:
+        "200":
+          description: Jira story details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JiraStory"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Jira API error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pipeline/generate:
+    post:
+      operationId: generateTestCases
+      tags: [pipeline]
+      summary: Generate test cases for a Jira story using AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StoryInput"
+      responses:
+        "200":
+          description: Generated test cases
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: AI API error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pipeline/publish:
+    post:
+      operationId: publishTestCases
+      tags: [pipeline]
+      summary: Publish reviewed test cases to BrowserStack
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublishInput"
+      responses:
+        "200":
+          description: Publish result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublishResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pipeline/traceability:
+    get:
+      operationId: getTraceability
+      tags: [pipeline]
+      summary: Get all traceability entries with coverage stats
+      responses:
+        "200":
+          description: Traceability map and coverage stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TraceabilityResponse"
+
+  /pipeline/traceability/{entryId}/automation:
+    patch:
+      operationId: updateAutomation
+      tags: [pipeline]
+      summary: Update automation metadata for a traceability entry
+      parameters:
+        - name: entryId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AutomationUpdate"
+      responses:
+        "200":
+          description: Updated entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TraceabilityEntry"
+        "404":
+          description: Entry not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    ConfigStatus:
+      type: object
+      required: [jiraConfigured, anthropicConfigured, browserstackConfigured]
+      properties:
+        jiraConfigured:
+          type: boolean
+        anthropicConfigured:
+          type: boolean
+        browserstackConfigured:
+          type: boolean
+
+    JiraFetchInput:
+      type: object
+      required: [jiraKey]
+      properties:
+        jiraKey:
+          type: string
+          minLength: 1
+
+    JiraStory:
+      type: object
+      required: [key, summary, labels, components]
+      properties:
+        key:
+          type: string
+        summary:
+          type: string
+        description:
+          type: ["string", "null"]
+        acceptanceCriteria:
+          type: ["string", "null"]
+        priority:
+          type: ["string", "null"]
+        status:
+          type: ["string", "null"]
+        labels:
+          type: array
+          items:
+            type: string
+        components:
+          type: array
+          items:
+            type: string
+
+    StoryInput:
+      type: object
+      required: [story]
+      properties:
+        story:
+          $ref: "#/components/schemas/JiraStory"
+
+    TestCase:
+      type: object
+      required: [name, description, preconditions, steps, expectedResult, priority, status]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        preconditions:
+          type: string
+        steps:
+          type: string
+        expectedResult:
+          type: string
+        priority:
+          type: string
+        status:
+          type: string
+
+    GenerateResult:
+      type: object
+      required: [testCases]
+      properties:
+        testCases:
+          type: array
+          items:
+            $ref: "#/components/schemas/TestCase"
+
+    PublishInput:
+      type: object
+      required: [jiraKey, folderId, projectId, testCases]
+      properties:
+        jiraKey:
+          type: string
+        folderId:
+          type: integer
+        projectId:
+          type: integer
+        testCases:
+          type: array
+          items:
+            $ref: "#/components/schemas/TestCase"
+
+    PublishResultItem:
+      type: object
+      required: [name, success]
+      properties:
+        name:
+          type: string
+        tcId:
+          type: ["string", "null"]
+        success:
+          type: boolean
+        error:
+          type: ["string", "null"]
+
+    PublishResult:
+      type: object
+      required: [total, created, failed, results]
+      properties:
+        total:
+          type: integer
+        created:
+          type: integer
+        failed:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublishResultItem"
+
+    TraceabilityEntry:
+      type: object
+      required: [id, jiraKey, tcName, bsTcId, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        jiraKey:
+          type: string
+        tcName:
+          type: string
+        bsTcId:
+          type: string
+        folderId:
+          type: ["integer", "null"]
+        automationMethod:
+          type: ["string", "null"]
+        automationFile:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    CoverageStats:
+      type: object
+      required: [totalTestCases, automated, notAutomated, automationCoveragePct, jiraStoriesCovered]
+      properties:
+        totalTestCases:
+          type: integer
+        automated:
+          type: integer
+        notAutomated:
+          type: integer
+        automationCoveragePct:
+          type: number
+        jiraStoriesCovered:
+          type: integer
+
+    TraceabilityResponse:
+      type: object
+      required: [entries, stats]
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/TraceabilityEntry"
+        stats:
+          $ref: "#/components/schemas/CoverageStats"
+
+    AutomationUpdate:
+      type: object
+      properties:
+        automationMethod:
+          type: ["string", "null"]
+        automationFile:
+          type: ["string", "null"]

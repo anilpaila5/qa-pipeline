@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: qa-pipeline
+    runtime: docker
+    repo: https://github.com/YOUR_USER/YOUR_REPO
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: PORT
+        value: "3001"
+      - key: BASE_PATH
+        value: "/"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: qa-pipeline-db
+          property: connectionString
+      - key: JIRA_BASE_URL
+        sync: false
+      - key: JIRA_EMAIL
+        sync: false
+      - key: JIRA_API_TOKEN
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-opus-4-5
+      - key: BROWSERSTACK_USERNAME
+        sync: false
+      - key: BROWSERSTACK_ACCESS_KEY
+        sync: false
+
+databases:
+  - name: qa-pipeline-db
+    plan: free
+    databaseName: qapipeline
+    user: qapipeline

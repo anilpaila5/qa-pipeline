@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    shm_size: 128mb
+    environment:
+      POSTGRES_USER: qapipeline
+      POSTGRES_PASSWORD: qapipeline
+      POSTGRES_DB: qapipeline
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U qapipeline"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: "3001"
+      BASE_PATH: "/"
+      DATABASE_URL: "postgres://qapipeline:qapipeline@db:5432/qapipeline"
+      JIRA_BASE_URL: ""
+      JIRA_EMAIL: ""
+      JIRA_API_TOKEN: ""
+      ANTHROPIC_API_KEY: ""
+      ANTHROPIC_MODEL: "claude-opus-4-5"
+      BROWSERSTACK_USERNAME: ""
+      BROWSERSTACK_ACCESS_KEY: ""
+      LOG_LEVEL: "info"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
