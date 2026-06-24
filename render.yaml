@@ -2,7 +2,6 @@ services:
   - type: web
     name: qa-pipeline
     runtime: docker
-    repo: https://github.com/YOUR_USER/YOUR_REPO
     plan: free
     dockerfilePath: ./Dockerfile
     envVars:
